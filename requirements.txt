@@ -1,0 +1,5 @@
+RPi.GPIO
+mfrc522
+requests
+flask
+ntplib

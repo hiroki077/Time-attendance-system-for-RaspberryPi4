@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ルキテック打刻システム</title>
+  <link rel="stylesheet" href="/static/css/attendance.css">
+</head>
+<body>
+  <h1>ルキテック打刻システム</h1>
+
+  <!-- QRコード表示（幅768px以上のみ） -->
+  <div class="card qr-container">
+    <div class="label">この端末へのアクセスQRコード</div>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://__HOST_IP__" alt="QR Code" class="qr">
+    <div class="value"><a href="http://__HOST_IP__">__HOST_IP__</a></div>
+  </div>
+
+  <div class="card">
+    <div class="label">Current Time (JST)</div><div class="value" id="now">--:--</div>
+    <div class="label">UID</div><div class="value" id="uid">---</div>
+    <div class="label">Username</div><div class="value" id="name">---</div>
+    <div class="label">Scan Time</div><div class="value" id="scan_time">---</div>
+    <div class="label">Status</div><div class="value" id="status">---</div>
+  </div>
+
+  <div class="card">
+    <div class="label">Today's Scans</div>
+    <div id="scan-history"></div>
+  </div>
+
+  <div class="card">
+    <button onclick="location.href='/'" style="padding: 0.7em 1.4em; font-size: 1rem; background: #ffffff; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">トップに戻る</button>
+  </div>
+
+  <!-- 毎秒 /data から JSON を取り、画面を更新するスクリプト -->
+  <script src="/static/js/attendance_update.js"></script>
+
+  <!-- 主端末（Primary）のみで挿入されるポーリング用スクリプト -->
+  __POLLING_SCRIPT__
+</body>
+</html>
