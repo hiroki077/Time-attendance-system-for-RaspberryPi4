@@ -2,7 +2,7 @@ import pymysql
 from flask import Flask, render_template_string, request, redirect, session
 
 # --- DB関数 ---
-def fetch_device_info(device_name="raspi4"):
+def fetch_device_info(host="raspi4"):
     conn = pymysql.connect(
         host='localhost',
         user='ruki',
@@ -13,13 +13,13 @@ def fetch_device_info(device_name="raspi4"):
     )
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT * FROM device_info WHERE device_name=%s"
-            cursor.execute(sql, (device_name,))
+            sql = "SELECT * FROM device_info WHERE host=%s"
+            cursor.execute(sql, (host,))
             return cursor.fetchone()
     finally:
         conn.close()
 
-def update_device_info(device_name, location_name, primary_ip):
+def update_device_info(host, device_name, location_name, primary_ip):
     conn = pymysql.connect(
         host='localhost',
         user='ruki',
@@ -29,8 +29,8 @@ def update_device_info(device_name, location_name, primary_ip):
     )
     try:
         with conn.cursor() as cursor:
-            sql = "UPDATE device_info SET location_name=%s, primary_ip=%s WHERE device_name=%s"
-            cursor.execute(sql, (location_name, primary_ip, device_name))
+            sql = "UPDATE device_info SET device_name=%s, location_name=%s, primary_ip=%s WHERE host=%s"
+            cursor.execute(sql, (device_name, location_name, primary_ip, host))
             conn.commit()
     finally:
         conn.close()
@@ -68,9 +68,10 @@ DEVICE_TEMPLATE = """
   <p><a href="/admin/logout">ログアウト</a></p>
   {% if msg %}<p style="color:green">{{ msg }}</p>{% endif %}
   <form method="post">
-    デバイス名: <input name="device_name" value="{{ info.device_name }}" readonly><br>
-    ロケーション: <input name="location_name" value="{{ info.location_name }}"><br>
-    Primary IP: <input name="primary_ip" value="{{ info.primary_ip }}"><br>
+    ホスト名: <input name="host" value="{{ info.host or 'raspi4' }}" readonly><br>
+    デバイス名: <input name="device_name" value="{{ info.device_name or '' }}"><br>
+    ロケーション: <input name="location_name" value="{{ info.location_name or '' }}"><br>
+    Primary IP: <input name="primary_ip" value="{{ info.primary_ip or '' }}"><br>
     <input type="submit" value="更新">
   </form>
 </body></html>
@@ -95,14 +96,16 @@ def device_info():
         return redirect("/admin/login")
     host_ip = request.host.split(":")[0]
     msg = ""
-    if request.method == "POST":
-        device_name = request.form.get("device_name")
-        location_name = request.form.get("location_name")
-        primary_ip = request.form.get("primary_ip")
-        update_device_info(device_name, location_name, primary_ip)
-        msg = "更新しました！"
     info = fetch_device_info("raspi4")
-    return render_template_string(DEVICE_TEMPLATE.replace("__HOST_IP__", host_ip), info=info, msg=msg)
+    if request.method == "POST":
+        # hostは変更不可・raspi4固定
+        device_name = request.form.get("device_name", "")
+        location_name = request.form.get("location_name", "")
+        primary_ip = request.form.get("primary_ip", "")
+        update_device_info("raspi4", device_name, location_name, primary_ip)
+        msg = "更新しました！"
+        info = fetch_device_info("raspi4")  # 更新後の値を再取得
+    return render_template_string(DEVICE_TEMPLATE.replace("__HOST_IP__", host_ip), info=info or {}, msg=msg)
 
 @app.route("/admin/logout")
 def logout():

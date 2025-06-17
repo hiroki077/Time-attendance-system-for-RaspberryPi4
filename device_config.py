@@ -1,6 +1,6 @@
 import pymysql
 
-def fetch_device_info(device_name="raspi4"):
+def fetch_device_info(host="raspi4"):
     conn = pymysql.connect(
         host='localhost',
         user='ruki',
@@ -11,11 +11,21 @@ def fetch_device_info(device_name="raspi4"):
     )
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT * FROM device_info WHERE device_name=%s"
-            cursor.execute(sql, (device_name,))
-            return cursor.fetchone()
+            sql = "SELECT * FROM device_info WHERE host=%s"
+            cursor.execute(sql, (host,))
+            row = cursor.fetchone()
+            if row is None:
+                # デフォルト値を返す
+                return {
+                    "host": host,
+                    "device_name": "",
+                    "location_name": "",
+                    "primary_ip": ""
+                }
+            return row
     finally:
         conn.close()
+
 
 def update_device_info(device_name, location_name, primary_ip):
     conn = pymysql.connect(

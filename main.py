@@ -5,6 +5,8 @@ from api_client import is_card_registered, register_work_time, post_unregistered
 from webserver import start_webserver, state
 from time_sync import get_jst_time
 from device_config import fetch_device_info
+import subprocess
+import os
 
 GREEN_LED = 27
 RED_LED = 22
@@ -26,6 +28,10 @@ def error_sound():
     for _ in range(3):
         beep(0.05)
         time.sleep(0.05)
+
+def start_admin_web():
+    subprocess.Popen(["python3", os.path.join(os.path.dirname(__file__), "admin_web.py")])
+ 
 
 GPIO.output(GREEN_LED, False)
 GPIO.output(RED_LED, False)
@@ -157,4 +163,5 @@ def main_loop():
 
 if __name__ == "__main__":
     start_webserver()
+    start_admin_web()
     main_loop()
