@@ -98,13 +98,13 @@ def device_info():
     msg = ""
     info = fetch_device_info("raspi4")
     if request.method == "POST":
-        # hostは変更不可・raspi4固定
+        # hostは変更不可
         device_name = request.form.get("device_name", "")
         location_name = request.form.get("location_name", "")
         primary_ip = request.form.get("primary_ip", "")
         update_device_info("raspi4", device_name, location_name, primary_ip)
         msg = "更新しました！"
-        info = fetch_device_info("raspi4")  # 更新後の値を再取得
+        info = fetch_device_info("raspi4")
     return render_template_string(DEVICE_TEMPLATE.replace("__HOST_IP__", host_ip), info=info or {}, msg=msg)
 
 @app.route("/admin/logout")

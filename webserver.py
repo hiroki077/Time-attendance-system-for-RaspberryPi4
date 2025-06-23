@@ -24,7 +24,7 @@ state = {
 
 @app.route("/data")
 def data():
-    info = fetch_device_info("raspi4")  # ←毎回DB最新値を取得
+    info = fetch_device_info("raspi4")
     now = get_jst_time()
     now_str = now.strftime("%Y/%m/%d %H:%M:%S")
     now_unixtime = int(now.timestamp())

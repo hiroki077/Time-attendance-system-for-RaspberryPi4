@@ -15,7 +15,6 @@ def fetch_device_info(host="raspi4"):
             cursor.execute(sql, (host,))
             row = cursor.fetchone()
             if row is None:
-                # デフォルト値を返す
                 return {
                     "host": host,
                     "device_name": "",

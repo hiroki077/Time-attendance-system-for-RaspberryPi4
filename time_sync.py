@@ -10,5 +10,5 @@ def get_jst_time():
         return jst
     except Exception as e:
         print("NTP取得失敗:", e)
-        # ローカル時刻で代用
+        # ローカル時刻
         return datetime.now(timezone(timedelta(hours=9)))

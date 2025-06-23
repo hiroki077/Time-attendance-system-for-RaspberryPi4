@@ -107,7 +107,7 @@ def main_loop():
         if result.get("registered"):
             if result.get("usage_type") == "staff":
                 assignee_type = "collaborator"
-                assignee_id = 1  # 必要に応じてDBから取っても良い
+                assignee_id = 1 
                 scanned_name = result.get("assignee", "---")
                 state["name_display"] = scanned_name
                 state["scan_time_display"] = now_str
