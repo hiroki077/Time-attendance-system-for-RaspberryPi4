@@ -81,6 +81,7 @@ def main_loop():
 
         result = is_card_registered(uid)
         print("[DEBUG] check_card_status:", result, result.get("usage_type"))
+        time.sleep(1)
 
         if not result.get("registered"):
             if result.get("usage_type") == "visitor":
@@ -134,7 +135,7 @@ def main_loop():
                         state["status"] = "休憩中"
                     else:
                         state["break_time_left"] = None
-                        state["status"] = "休憩終了"
+                        state["status"] = "休憩中"
                 elif scan_count == 3:
                     state["break_time_left"] = None
                     state["status"] = "休憩終了"

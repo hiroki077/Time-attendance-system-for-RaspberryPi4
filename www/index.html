@@ -2,25 +2,26 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>システム選択</title>
   <link rel="stylesheet" href="/static/css/index.css">
 </head>
 <body>
-  <h1> ルキテックへようこそ</h1>
+  <h1>ルキテックへようこそ</h1>
   <div class="button-container">
     <button class="btn" onclick="location.href='/attendance'">勤怠ページへ</button>
-    <button class="btn" onclick="location.href='http://192.168.24.62:8000/welcome/'">顧客対応ページへ</button>
+    <button id="customer-btn" class="btn">顧客対応ページへ</button>
   </div>
-  
-    <!-- 管理者ページボタン（右上・小さく） -->
-    <a href="http://__HOST_IP__:8090/admin/device_info" id="admin-link" target="_blank" title="管理画面">
-      管理
-    </a>
 
+  <a href="http://__HOST_IP__:8090/admin/device_info" target="_blank">管理</a>
 
-
-  <!-- 主端末のみで挿入されるポーリング用スクリプト -->
+  <!-- ここでwindowにセット -->
+  <script>
+    window.API_BASE = "__API_BASE__";
+    document.getElementById("customer-btn").onclick = function() {
+      window.open(window.API_BASE + "/welcome/", "_blank");
+    }
+  </script>
+  <!-- 外部JSをここで読み込む（自動遷移もwindow.API_BASEでOK） -->
   __POLLING_SCRIPT__
 </body>
 </html>

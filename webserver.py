@@ -2,9 +2,9 @@ from flask import Flask, send_from_directory, request, jsonify
 import os
 from time_sync import get_jst_time
 from device_config import fetch_device_info
+from ip_config import API_BASE
 
-
-
+print(API_BASE)
 
 app = Flask(
     __name__,
@@ -56,7 +56,10 @@ def index():
     host_ip = request.host.split(":")[0]           # IPだけを抽出
     polling_tag = '<script src="/static/js/index_polling.js"></script>' if is_primary else ""
     html = html.replace("__POLLING_SCRIPT__", polling_tag)
-    html = html.replace("__HOST_IP__", host_ip)    # 必ずこの行を入れる！！
+    html = html.replace("__HOST_IP__", host_ip)
+    html = html.replace("__API_BASE__", API_BASE)
+    print("★ API_BASE:", API_BASE)
+    print("★ html出力サンプル：", html[:400])  
     return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
@@ -74,6 +77,7 @@ def attendance():
     html = html.replace("__HOST_IP__", host_ip)
     polling_tag = '<script src="/static/js/attendance_polling.js"></script>' if is_primary else ""
     html = html.replace("__POLLING_SCRIPT__", polling_tag)
+    html = html.replace("__API_BASE__", API_BASE)
     return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 @app.route("/static/<path:filename>")
