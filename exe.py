@@ -78,14 +78,13 @@ def show_menu() -> str:
     menu = """
 ===================== Attendance Manager =====================
  1) Lanch main.py
- 2) git pull
- 3) git add ➜ commit ➜ push (manual credentials)
- 4) Kill all Flask processes
- 5) Kill all Python processes
- 6) Restart (3 ➜ 4)
- 7) Exit
+ 2) git add ➜ commit ➜ push (manual credentials)
+ 3) Kill all Flask processes
+ 4) Kill all Python processes
+ 5) Restart (3 ➜ 4)
+ 6) Exit
 ================================================================
-Enter choice (1-7): """
+Enter choice (1-6): """
     return input(menu).strip()
 
 
@@ -96,21 +95,19 @@ def main() -> None:
         if choice == "1":
             run_main()
         elif choice == "2":
-            git_pull()
-        elif choice == "3":
             git_commit_push()
-        elif choice == "4":
+        elif choice == "3":
             kill_flask()
+        elif choice == "4":
+            kill_python()
         elif choice == "5":
+            kill_flask()
             kill_python()
         elif choice == "6":
-            kill_flask()
-            kill_python()
-        elif choice == "7":
             print("Good-bye!")
             sys.exit(0)
         else:
-            print("⚠️ Please enter a number from 1 to 7.")
+            print("⚠️ Please enter a number from 1 to 6.")
 
 
 if __name__ == "__main__":
