@@ -48,7 +48,7 @@ It features visual/audio feedback with LEDs & a buzzer, break time management, a
 | MISO      | GPIO9  (MISO)          | 21           |
 | IRQ       | Not Connected          | -            |
 | GND       | GND                    | 6 (or 9,14,20,25,30,34,39) |
-| RST       | GPIO25                 | 22           |
+| RST       | GPIO26                 | 37           |
 | 3.3V      | 3.3V                   | 1 (or 17)    |
 
 - Be sure to use 3.3V for the RC522 (using 5V can damage the board).
@@ -166,8 +166,8 @@ LEDやブザーによるフィードバック、休憩管理、二重スキャ�
 | MOSI      | GPIO10 (MOSI)          | 19           |
 | MISO      | GPIO9  (MISO)          | 21           |
 | IRQ       | 接続不要               | -            |
-| GND       | GND                    | 6 (他でも可) |
-| RST       | GPIO25                 | 22           |
+| GND       | GND                    | 6 (or 9,14,20,25,30,34,39) |
+| RST       | GPIO26                 | 37           |
 | 3.3V      | 3.3V                   | 1 (or 17)    |
 
 - RC522には必ず3.3Vを使用してください（5Vは故障原因となります）。
@@ -234,4 +234,5 @@ pip3 install django djangorestframework
 - Web画面へはネットワーク・ファイアウォールの設定に注意。
 
 ---
+
 
