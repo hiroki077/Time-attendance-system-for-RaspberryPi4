@@ -7,6 +7,8 @@ from time_sync import get_jst_time
 from device_config import fetch_device_info
 import subprocess
 import os
+from excel_logger import save_attendance_excel
+
 
 GREEN_LED = 27
 RED_LED = 22
@@ -74,14 +76,31 @@ def main_loop():
             GPIO.output(RED_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(YELLOW_LED, False)
             error_sound()
             continue
-
+        
         state["last_scan_times"][uid] = now_ts
         beep()
+        
         state.update({"uid_display": uid, "scan_time_display": now_str})
 
-        result = is_card_registered(uid)
-        print("[DEBUG] check_card_status:", result, result.get("usage_type"))
-        time.sleep(1)
+
+
+        #if the network work normaly
+        try:
+            result = is_card_registered(uid)
+            print("[DEBUG] check_card_status:", result, result.get("usage_type"))
+            time.sleep(0.5)
+        #if the network does not work
+        except Exception as e:
+            print("[ERROR] ネット接続失敗 or サーバー応答なし:", e)
+            save_attendance_excel(None, uid)  # UIDのみUSB保存
+            state["status"] = "ネット接続なし：UIDを保存"
+            GPIO.output(YELLOW_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(RED_LED, False)
+            error_sound()
+            continue 
+
+
+
+
 
         if not result.get("registered"):
             if result.get("usage_type") == "visitor":
@@ -103,7 +122,8 @@ def main_loop():
                     time.sleep(1.0)
                     customer_state = 0
                     continue
-
+                
+            
         if result.get("registered"):
             if result.get("usage_type") == "staff":
                 assignee_type = "collaborator"
@@ -111,8 +131,14 @@ def main_loop():
                 scanned_name = result.get("assignee", "---")
                 state["name_display"] = scanned_name
                 state["scan_time_display"] = now_str
-
+                
                 log_res = register_work_time(uid, assignee_type, assignee_id, action="checkin", device=DEVICE_NAME, location=LOCATION_NAME)
+                # USBメモリにも保存
+                try:
+                    save_attendance_excel(scanned_name, uid)
+                except Exception as e:
+                    print("[ERROR] USB保存失敗:", e)
+
                 print("[DEBUG] register_work_time:", log_res)
                 state["status"] = "打刻成功" if log_res.get("message") else "打刻失敗"
                 GPIO.output(GREEN_LED, True); GPIO.output(RED_LED, False); GPIO.output(YELLOW_LED, False)
