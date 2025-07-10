@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import sys
 import RPi.GPIO as GPIO
 import time
 from mfrc522 import SimpleMFRC522
@@ -9,13 +11,13 @@ import subprocess
 import os
 from excel_logger import save_attendance_excel
 
-
 GREEN_LED = 27
 RED_LED = 22
 YELLOW_LED = 17
 BUZZER = 16
 
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 GPIO.setup(GREEN_LED, GPIO.OUT)
 GPIO.setup(RED_LED, GPIO.OUT)
 GPIO.setup(YELLOW_LED, GPIO.OUT)
@@ -32,14 +34,17 @@ def error_sound():
         time.sleep(0.05)
 
 def start_admin_web():
-    subprocess.Popen(["python3", os.path.join(os.path.dirname(__file__), "admin_web.py")])
- 
+    """venv の Python で admin_web.py を起動する"""
+    python_exe = sys.executable  # venv/bin/python を指す
+    admin_path = os.path.join(os.path.dirname(__file__), "admin_web.py")
+    print(f"🚀 Launch admin_web with: {python_exe} {admin_path}")
+    subprocess.Popen([python_exe, admin_path], cwd=os.path.dirname(__file__))
 
+# 初期表示設定
 GPIO.output(GREEN_LED, False)
 GPIO.output(RED_LED, False)
 GPIO.output(YELLOW_LED, True)
 GPIO.output(BUZZER, False)
-
 state.update({
     "uid_display": "---",
     "name_display": "---",
@@ -56,135 +61,88 @@ customer_state = 0
 def main_loop():
     global customer_state
     reader = SimpleMFRC522()
-    while True:
-        # 最新デバイス情報（DBから毎回取得）
-        device_info = fetch_device_info("raspi4")
-        DEVICE_NAME = device_info['device_name']
-        LOCATION_NAME = device_info['location_name']
-        PRIMARY_FIXED_IP = device_info['primary_ip']
 
-        print("waiting...")
-        id, text = reader.read()
+    while True:
+        # --- カード読み取り & 時刻取得 ---
+        id, _ = reader.read()
         uid = hex(id)
-        now_time = get_jst_time()
+        try:
+            now_time = get_jst_time()
+        except Exception as e:
+            print("[WARN] get_jst_time failed, fallback to local:", e)
+            from datetime import datetime
+            now_time = datetime.now()
         now_str = now_time.strftime("%Y/%m/%d %H:%M:%S")
         now_ts = time.time()
 
-        # 二重スキャン防止
-        if uid in state["last_scan_times"] and now_ts - state["last_scan_times"][uid] < 10:
-            state["status"] = "⚠️ 注意: 時間を置いてください "
+        # --- 連続タップ防止 ---
+        last = state["last_scan_times"].get(uid, 0)
+        if now_ts - last < 10:
+            state["status"] = "⚠️ 注意: 時間を置いてください"
             GPIO.output(RED_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(YELLOW_LED, False)
             error_sound()
             continue
-        
         state["last_scan_times"][uid] = now_ts
+
         beep()
-        
         state.update({"uid_display": uid, "scan_time_display": now_str})
 
-
-
-        #if the network work normaly
+        # --- ネットワーク＆打刻処理 ---
         try:
+            dev = fetch_device_info("raspi4")
+            DEVICE_NAME = dev["device_name"]
+            LOCATION_NAME = dev["location_name"]
+
             result = is_card_registered(uid)
-            print("[DEBUG] check_card_status:", result, result.get("usage_type"))
-            time.sleep(0.5)
-        #if the network does not work
-        except Exception as e:
-            print("[ERROR] ネット接続失敗 or サーバー応答なし:", e)
-            save_attendance_excel(None, uid)  # UIDのみUSB保存
-            state["status"] = "ネット接続なし：UIDを保存"
-            GPIO.output(YELLOW_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(RED_LED, False)
-            error_sound()
-            continue 
+            print("[DEBUG] check_card_status:", result)
 
-
-
-
-
-        if not result.get("registered"):
-            if result.get("usage_type") == "visitor":
+            if not result.get("registered") and result.get("usage_type") == "visitor":
+                # visitor 用簡易モード
                 if customer_state == 0:
-                    print(">>> 顧客カードを検出。customer_state → Serving")
                     state["customer_state"] = "Serving"
-                    GPIO.output(GREEN_LED, True)
-                    time.sleep(0.2)
-                    GPIO.output(GREEN_LED, False)
+                    GPIO.output(GREEN_LED, True); time.sleep(0.2); GPIO.output(GREEN_LED, False)
                     time.sleep(1.0)
-                    customer_state += 1
-                    continue
-                elif customer_state == 1:
+                    customer_state = 1
+                else:
                     state["customer_state"] = "Idle"
-                    print(" お客さんの対応を終えました。")
-                    GPIO.output(GREEN_LED, True)
-                    time.sleep(0.2)
-                    GPIO.output(GREEN_LED, False)
+                    GPIO.output(GREEN_LED, True); time.sleep(0.2); GPIO.output(GREEN_LED, False)
                     time.sleep(1.0)
                     customer_state = 0
-                    continue
-                
-            
-        if result.get("registered"):
-            if result.get("usage_type") == "staff":
-                assignee_type = "collaborator"
-                assignee_id = 1 
-                scanned_name = result.get("assignee", "---")
-                state["name_display"] = scanned_name
-                state["scan_time_display"] = now_str
-                
-                log_res = register_work_time(uid, assignee_type, assignee_id, action="checkin", device=DEVICE_NAME, location=LOCATION_NAME)
-                # USBメモリにも保存
-                try:
-                    save_attendance_excel(scanned_name, uid)
-                except Exception as e:
-                    print("[ERROR] USB保存失敗:", e)
 
-                print("[DEBUG] register_work_time:", log_res)
+            elif result.get("registered") and result.get("usage_type") == "staff":
+                # staff の打刻
+                name = result.get("assignee", "")
+                state["name_display"] = name
+                log_res = register_work_time(
+                    uid, "collaborator", 1,
+                    action="checkin", device=DEVICE_NAME, location=LOCATION_NAME
+                )
+                save_attendance_excel(name, uid, dt=now_time)
                 state["status"] = "打刻成功" if log_res.get("message") else "打刻失敗"
                 GPIO.output(GREEN_LED, True); GPIO.output(RED_LED, False); GPIO.output(YELLOW_LED, False)
                 beep()
 
-                # 履歴管理：新→旧順で保存
-                if scanned_name not in state["history"]:
-                    state["history"][scanned_name] = []
-                state["history"][scanned_name].insert(0, {"time": now_str, "timestamp": now_ts})
-                state["history"][scanned_name] = state["history"][scanned_name][:10]
+            elif result.get("usage_type") is not None:
+                # 登録はあるが staff/visitor ではない
+                state["status"] = "⚠️ ユーザー登録をしてください。"
+                GPIO.output(YELLOW_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(RED_LED, True)
+                error_sound()
+                save_attendance_excel("", uid, dt=now_time)
 
-                logs = state["history"][scanned_name]
-                scan_count = len(logs)
+            else:
+                # 完全未登録
+                post_unregistered_scan(uid, device=DEVICE_NAME, location=LOCATION_NAME)
+                state["status"] = "未登録カード"
+                GPIO.output(RED_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(YELLOW_LED, False)
+                error_sound()
+                save_attendance_excel("", uid, dt=now_time)
 
-                # 2回スキャン時に休憩中
-                if scan_count == 2:
-                    elapsed = logs[0]["timestamp"] - logs[1]["timestamp"]
-                    if elapsed < 3600:
-                        state["break_time_left"] = int(3600 - elapsed)
-                        state["status"] = "休憩中"
-                    else:
-                        state["break_time_left"] = None
-                        state["status"] = "休憩中"
-                elif scan_count == 3:
-                    state["break_time_left"] = None
-                    state["status"] = "休憩終了"
-                elif scan_count > 3:
-                    state["break_time_left"] = None
-                    state["status"] = "打刻しました"
-                else:
-                    state["break_time_left"] = None
-                    state["status"] = "打刻しました"
-
-        elif result.get("usage_type") is not None:
-            state["status"] = "⚠️ ユーザー登録をしてください。"
-            GPIO.output(YELLOW_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(RED_LED, True)
+        except Exception as e:
+            print("[ERROR] ネット接続障害 or API エラー:", e)
+            state["status"] = "ネット接続なし：UIDを保存"
+            GPIO.output(YELLOW_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(RED_LED, False)
             error_sound()
-            state["break_time_left"] = None
-
-        else:
-            unreg_res = post_unregistered_scan(uid, device=DEVICE_NAME, location=LOCATION_NAME)
-            print("[DEBUG] unregistered scan:", unreg_res)
-            state["status"] = "未登録カード"
-            GPIO.output(RED_LED, True); GPIO.output(GREEN_LED, False); GPIO.output(YELLOW_LED, False)
-            error_sound()
-            state["break_time_left"] = None
+            save_attendance_excel(None, uid, dt=now_time)
 
         time.sleep(0.1)
 

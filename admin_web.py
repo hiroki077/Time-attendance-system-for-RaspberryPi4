@@ -1,13 +1,17 @@
+import os
 import pymysql
 from flask import Flask, render_template_string, request, redirect, session
+from dotenv import load_dotenv  # .env 読み込み用
 
-# --- DB関数 ---
+load_dotenv()
+
+# --- DB関数 
 def fetch_device_info(host="raspi4"):
     conn = pymysql.connect(
-        host='localhost',
-        user='ruki',
-        password='ruki03',
-        database='attendance',
+        host=os.environ.get("DB_HOST", "localhost"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASS"),
+        database=os.environ.get("DB_NAME"),
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
@@ -21,10 +25,10 @@ def fetch_device_info(host="raspi4"):
 
 def update_device_info(host, device_name, location_name, primary_ip):
     conn = pymysql.connect(
-        host='localhost',
-        user='ruki',
-        password='ruki03',
-        database='attendance',
+        host=os.environ.get("DB_HOST", "localhost"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASS"),
+        database=os.environ.get("DB_NAME"),
         charset='utf8mb4'
     )
     try:
@@ -35,19 +39,18 @@ def update_device_info(host, device_name, location_name, primary_ip):
     finally:
         conn.close()
 
-# --- Flask ---
-ADMIN_USER = "ruki"
-ADMIN_PASS = "ruki03"
+# --- Flask設定 ---
+ADMIN_USER = os.environ.get("ADMIN_USER")
+ADMIN_PASS = os.environ.get("ADMIN_PASS")
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key_here"
+app.secret_key = os.environ.get("SECRET_KEY", "fallback_key")
+
 
 LOGIN_TEMPLATE = """
 <!DOCTYPE html>
 <html><body>
-  <a href="http://__HOST_IP__:8080/index.html" id="main-link">
-    メイン画面へ
-  </a>
+  <a href="http://__HOST_IP__:8080/index.html" id="main-link">メイン画面へ</a>
   <h2>管理者ログイン</h2>
   {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
   <form method="post">
@@ -61,9 +64,7 @@ LOGIN_TEMPLATE = """
 DEVICE_TEMPLATE = """
 <!DOCTYPE html>
 <html><body>
-  <a href="http://__HOST_IP__:8080/index.html" id="main-link">
-    メイン画面へ
-  </a>
+  <a href="http://__HOST_IP__:8080/index.html" id="main-link">メイン画面へ</a>
   <h2>デバイス情報編集</h2>
   <p><a href="/admin/logout">ログアウト</a></p>
   {% if msg %}<p style="color:green">{{ msg }}</p>{% endif %}
@@ -77,6 +78,7 @@ DEVICE_TEMPLATE = """
 </body></html>
 """
 
+# --- ルーティング ---
 @app.route("/admin/login", methods=["GET", "POST"])
 def login():
     host_ip = request.host.split(":")[0]
@@ -98,7 +100,6 @@ def device_info():
     msg = ""
     info = fetch_device_info("raspi4")
     if request.method == "POST":
-        # hostは変更不可
         device_name = request.form.get("device_name", "")
         location_name = request.form.get("location_name", "")
         primary_ip = request.form.get("primary_ip", "")
@@ -112,5 +113,6 @@ def logout():
     session.pop("admin", None)
     return redirect("/admin/login")
 
+# --- 実行 ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8090, debug=True)
