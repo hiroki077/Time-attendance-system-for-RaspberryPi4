@@ -7,41 +7,57 @@ from getpass import getpass
 
 BASE_DIR = Path(__file__).resolve().parent
 
-
 def git_commit_push() -> None:
-    """Stage everything, commit with a user-entered message, then push."""
+    """Stage everything, commit (if needed), then push."""
+    # 1) git add
     try:
-        # Stage changes
-        subprocess.run(["git", "-C", str(BASE_DIR), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(BASE_DIR), "add", "."],
+            check=True
+        )
         print("✅ git add . completed")
+    except subprocess.CalledProcessError as e:
+        print("❌ git add failed:", e)
+        return
 
-        # Commit message
-        msg = input("📝 Enter commit message: ").strip()
-        if not msg:
-            print("⚠️ Commit message cannot be empty.")
+    # 2) git commit（変更なしならスキップ）
+    commit = subprocess.run(
+        ["git", "-C", str(BASE_DIR), "commit", "-m", input("📝 Enter commit message: ").strip()],
+        capture_output=True,
+        text=True
+    )
+    if commit.returncode != 0:
+        stderr = commit.stderr.lower()
+        if "nothing to commit" in stderr:
+            print("⚠️ No changes to commit, skipping commit.")
+        else:
+            print("❌ git commit failed:")
+            print(commit.stderr.strip())
             return
-
-        subprocess.run(["git", "-C", str(BASE_DIR), "commit", "-m", msg], check=True)
+    else:
         print("✅ git commit completed")
 
-        # Push (supports HTTPS with username / PAT, or SSH)
+    # 3) git push
+    try:
         remote_url = subprocess.check_output(
             ["git", "-C", str(BASE_DIR), "remote", "get-url", "origin"]
         ).decode().strip()
-
         if remote_url.startswith("https://"):
             username = input("👤 GitHub username: ").strip()
             password = getpass("🔑 Personal access token / password: ")
             auth_url = remote_url.replace("https://", f"https://{username}:{password}@")
-            subprocess.run(["git", "-C", str(BASE_DIR), "push", auth_url, "HEAD"], check=True)
+            subprocess.run(
+                ["git", "-C", str(BASE_DIR), "push", auth_url, "HEAD"],
+                check=True
+            )
         else:
-            subprocess.run(["git", "-C", str(BASE_DIR), "push"], check=True)
-
+            subprocess.run(
+                ["git", "-C", str(BASE_DIR), "push"],
+                check=True
+            )
         print("✅ git push completed")
-
     except subprocess.CalledProcessError as e:
-        print("❌ Git operation failed:", e)
-
+        print("❌ git push failed:", e)
 
 def git_pull() -> None:
     try:
@@ -50,16 +66,13 @@ def git_pull() -> None:
     except subprocess.CalledProcessError as e:
         print("❌ git pull failed:", e)
 
-
 def kill_flask() -> None:
     subprocess.run(["pkill", "-f", "flask"])
     print("✅ Flask processes terminated")
 
-
 def kill_python() -> None:
     subprocess.run(["pkill", "-f", "python"])
     print("✅ All Python processes terminated")
-
 
 def run_main():
     """Run main.py using virtualenv if it exists"""
@@ -70,7 +83,6 @@ def run_main():
         print("❌ main.py not found at", main_py)
         return
 
-    # デバッグ確認
     print(f"🔍 BASE_DIR = {BASE_DIR}")
     print(f"🔍 venv_python exists: {venv_python.exists()} ({venv_python})")
 
@@ -94,11 +106,9 @@ def run_main():
     except KeyboardInterrupt:
         print("\n🔴 main.py execution interrupted by user (Ctrl+C)")
 
-
 def kill_main():
     subprocess.run(["pkill", "-f", "main.py"])
     print("✅ main.py stopped")
-
 
 def show_menu() -> str:
     menu = """
@@ -114,11 +124,9 @@ def show_menu() -> str:
 Enter choice (1-7): """
     return input(menu).strip()
 
-
 def main() -> None:
     while True:
         choice = show_menu()
-
         if choice == "1":
             run_main()
         elif choice == "2":
@@ -137,7 +145,6 @@ def main() -> None:
             sys.exit(0)
         else:
             print("⚠️ Please enter a number from 1 to 7.")
-
 
 if __name__ == "__main__":
     main()
